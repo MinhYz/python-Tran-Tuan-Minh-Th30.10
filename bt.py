@@ -1,151 +1,144 @@
-import datetime
-from array import array
+ import os
 
-# =================================================================
-# BÀI THỰC HÀNH CHƯƠNG 3 - TỔNG HỢP TOÀN BỘ 22 BÀI
-# =================================================================
+class ThiSinh:
+    """Lớp đại diện cho một thí sinh"""
+    def __init__(self, ma_hs, ho_ten, khoi_thi, diem_thi):
+        self.ma_hs = ma_hs
+        self.ho_ten = ho_ten
+        self.khoi_thi = khoi_thi.upper()
+        self.diem_thi = diem_thi
+        # Tự động tính toán kết quả: Đậu nếu điểm từ 15 trở lên
+        self.ket_qua = "Đậu" if diem_thi >= 15 else "Trượt"
 
-# --- NHÓM 1: XỬ LÝ CHUỖI (BÀI 1 - 7) ---
-def nhom_string():
-    while True:
-        print("\n--- BÀI TẬP CHUỖI (1-7) ---")
-        print("1. Đối xứng | 2. Đảo ngược | 3. Hoa Min/Max | 4. Đếm hoa/thường")
-        print("5. Chèn xâu | 6. Chuẩn hóa tên | 7. Thống kê chuỗi | 0. Quay lại")
-        chon = input("Chọn bài: ")
-        
-        if chon == '0': break
-        elif chon == '1':
-            x = input("Nhập xâu: ")
-            print("Kết quả:", "Đối xứng" if x == x[::-1] else "Không đối xứng")
-        elif chon == '2':
-            s = input("Nhập xâu: ")
-            dao = ""
-            for i in range(len(s)-1, -1, -1): dao += s[i]
-            print("Xâu đảo:", dao)
-        elif chon == '3':
-            s = input("Nhập xâu: ")
-            hoa = [c for c in s if 'A' <= c <= 'Z']
-            if hoa: print(f"Min: {min(hoa)}, Max: {max(hoa)}")
-            else: print("Không có chữ hoa")
-        elif chon == '4':
-            s = input("Nhập xâu: ")
-            h = sum(1 for c in s if c.isupper())
-            t = sum(1 for c in s if c.islower())
-            print(f"Hoa: {h}, Thường: {t}")
-        elif chon == '5':
-            s1, s2 = input("Xâu 1: "), input("Xâu 2: ")
-            k = int(input("Vị trí k: "))
-            print("Kết quả:", s1[:k] + s2 + s1[k:])
-        elif chon == '6':
-            t = input("Nhập họ tên: ")
-            print("Chuẩn hóa:", " ".join(w.capitalize() for w in t.strip().split()))
-        elif chon == '7':
-            s = input("Nhập chuỗi: ")
-            ds = s.split()
-            print(f"Số ký tự: {len(s)}, Số từ: {len(ds)}")
-            for w in ds: print("-", w)
+    def __str__(self):
+        return f"| {self.ma_hs:<10} | {self.ho_ten:<20} | {self.khoi_thi:<8} | {self.diem_thi:<8} | {self.ket_qua:<8} |"
 
-# --- NHÓM 2: DATE - TIME (BÀI 8 - 9) ---
-def nhom_datetime():
-    print("\n--- BÀI TẬP DATE-TIME (8-9) ---")
-    nhap = input("Nhập ngày sinh (dd/mm/yyyy): ")
-    ns = datetime.datetime.strptime(nhap, "%d/%m/%Y")
-    nay = datetime.datetime.now()
+class HeThongTuyenSinh:
+    """Lớp điều khiển các chức năng quản lý"""
+    def __init__(self):
+        self.danh_sach = []
+
+    # 1. Thêm thí sinh (Yêu cầu 1 & 4)
+    def them_moi(self):
+        print("\n--- THÊM THÍ SINH MỚI ---")
+        ma = input("Nhập mã hồ sơ: ")
+        # Kiểm tra trùng mã hồ sơ
+        if any(ts.ma_hs == ma for ts in self.danh_sach):
+            print("❌ Lỗi: Mã hồ sơ này đã tồn tại trong hệ thống!")
+            return
+
+        ten = input("Nhập họ tên: ")
+        khoi = input("Nhập khối thi (A00/B00): ")
+        try:
+            diem = float(input("Nhập điểm thi: "))
+            ts_moi = ThiSinh(ma, ten, khoi, diem)
+            self.danh_sach.append(ts_moi)
+            print("✅ Đã thêm thí sinh thành công.")
+        except ValueError:
+            print("❌ Lỗi: Điểm thi phải là con số.")
+
+    # 2. Tìm kiếm theo mã (Yêu cầu 2)
+    def tim_kiem(self):
+        ma = input("\nNhập mã hồ sơ cần tìm: ")
+        for ts in self.danh_sach:
+            if ts.ma_hs == ma:
+                print("\n--- KẾT QUẢ TÌM KIẾM ---")
+                self.in_tieu_de()
+                print(ts)
+                return
+        print("❌ Không tìm thấy thí sinh nào có mã này.")
+
+    # 3. Sắp xếp theo kết quả (Yêu cầu 3)
+    def sap_xep(self):
+        # Sắp xếp theo kết quả (Đậu đứng trước Trượt)
+        self.danh_sach.sort(key=lambda x: x.ket_qua)
+        print("✅ Đã sắp xếp danh sách theo kết quả thi.")
+        self.hien_thi_tat_ca()
+
+    # 4. Sửa hoặc Xóa (Yêu cầu 4)
+    def sua_thong_tin(self):
+        ma = input("\nNhập mã hồ sơ cần sửa: ")
+        for ts in self.danh_sach:
+            if ts.ma_hs == ma:
+                print(f"Đang sửa thông tin cho: {ts.ho_ten}")
+                ts.ho_ten = input("Nhập tên mới: ")
+                ts.khoi_thi = input("Nhập khối mới (A00/B00): ").upper()
+                try:
+                    ts.diem_thi = float(input("Nhập điểm thi mới: "))
+                    ts.ket_qua = "Đậu" if ts.diem_thi >= 15 else "Trượt"
+                    print("✅ Cập nhật hoàn tất.")
+                except ValueError:
+                    print("❌ Lỗi: Điểm không hợp lệ. Hủy cập nhật điểm.")
+                return
+        print("❌ Không tìm thấy thí sinh để sửa.")
+
+    def xoa_thong_tin(self):
+        ma = input("\nNhập mã hồ sơ cần xóa: ")
+        original_size = len(self.danh_sach)
+        self.danh_sach = [ts for ts in self.danh_sach if ts.ma_hs != ma]
+        if len(self.danh_sach) < original_size:
+            print("✅ Đã xóa thí sinh thành công.")
+        else:
+            print("❌ Không tìm thấy mã hồ sơ để xóa.")
+
+    # 5. Xuất theo khối và kết quả (Yêu cầu 5)
+    def xuat_theo_loc(self):
+        khoi = input("\nNhập khối muốn xuất (A00/B00): ").upper()
+        kq = input("Nhập kết quả muốn xuất (Đậu/Trượt): ")
+        print(f"\n--- DANH SÁCH THÍ SINH KHỐI {khoi} - KẾT QUẢ: {kq} ---")
+        self.in_tieu_de()
+        count = 0
+        for ts in self.danh_sach:
+            if ts.khoi_thi == khoi and ts.ket_qua == kq:
+                print(ts)
+                count += 1
+        if count == 0:
+            print("   (Không có dữ liệu phù hợp)")
+
+    def in_tieu_de(self):
+        print("-" * 68)
+        print(f"| {'Mã HS':<10} | {'Họ Tên':<20} | {'Khối':<8} | {'Điểm':<8} | {'Kết quả':<8} |")
+        print("-" * 68)
+
+    def hien_thi_tat_ca(self):
+        if not self.danh_sach:
+            print("\n⚠️ Danh sách hiện tại đang trống.")
+            return
+        print("\n--- TOÀN BỘ DANH SÁCH THÍ SINH ---")
+        self.in_tieu_de()
+        for ts in self.danh_sach:
+            print(ts)
+        print("-" * 68)
+
+def main():
+    ql = HeThongTuyenSinh()
     
-    # Bài 8
-    print(f"Tuổi: {nay.year - ns.year}")
-    print(f"Số ngày đã qua: {(nay - ns).days}")
-    print("Hệ thống:", nay.strftime("%d/%m/%Y %H:%M:%S"))
-    
-    # Bài 9
-    chuan_ten = " ".join(w.capitalize() for w in input("Họ tên SV: ").strip().split())
-    print(f"SV: {chuan_ten} | Sinh ngày: {ns.day}, Tháng: {ns.month}, Năm: {ns.year}")
-    nhuan = (ns.year % 4 == 0 and ns.year % 100 != 0) or (ns.year % 400 == 0)
-    print("Năm nhuận:", "Có" if nhuan else "Không")
-    thu = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"]
-    print("Thứ trong tuần:", thu[ns.weekday()])
-
-# --- NHÓM 3: TUPLE - SET - ARRAY (BÀI 14 - 18) ---
-def nhom_tuple_set_array():
     while True:
-        print("\n--- BÀI TẬP TUPLE-SET-ARRAY (14-18) ---")
-        print("14. Tuple Hoa | 15. Tuple Số | 16. Set Lớp | 17. Mảng Nguyên | 18. Mảng Thực | 0. Quay lại")
-        chon = input("Chọn bài: ")
+        print("\n========= QUẢN LÝ TUYỂN SINH =========")
+        print("1. Nhập thông tin thí sinh")
+        print("2. Tìm kiếm theo Mã hồ sơ")
+        print("3. Sắp xếp theo Kết quả thi")
+        print("4. Thêm thí sinh")
+        print("5. Sửa thông tin thí sinh")
+        print("6. Xóa thí sinh")
+        print("7. Xuất theo Khối thi & Kết quả")
+        print("8. Hiển thị toàn bộ danh sách")
+        print("0. Thoát chương trình")
         
-        if chon == '0': break
-        elif chon == '14':
-            hoa = ("Hồng", "Lan", "Huệ", "Cúc", "Mai", "Đào", "Sen", "Súng", "Quỳnh")
-            f1, f2 = hoa[:5], hoa[5:]
-            print("F1:", f1, "\nĐộ dài:", [len(h) for h in f1])
-            print("F2:", f2, "\nĐộ dài:", [len(h) for h in f2])
-        elif chon == '15':
-            tp = tuple(int(x) for x in input("Nhập dãy số: ").split())
-            tich = 1
-            for x in tp: tich *= x
-            print(f"Tổng: {sum(tp)}, Tích: {tich}")
-        elif chon == '16':
-            a = set(input("Lớp A: ").split(','))
-            b = set(input("Lớp B: ").split(','))
-            print("Giao:", a & b, "\nChỉ A:", a - b, "\nHợp:", a | b)
-        elif chon == '17':
-            n = int(input("n = "))
-            arr = array('i', [int(input(f"Số {i+1}: ")) for i in range(n)])
-            print("Mảng:", arr.tolist(), "Tổng:", sum(arr), "TB:", sum(arr)/n)
-        elif chon == '18':
-            n = int(input("n = "))
-            goc = array('f', [float(input(f"Số {i+1}: ")) for i in range(n)])
-            am = array('f', [x for x in goc if x < 0])
-            duong = array('f', [x for x in goc if x >= 0])
-            print(f"Gốc: {goc.tolist()}\nÂm: {am.tolist()}\nDương: {duong.tolist()}")
-
-# --- NHÓM 4: LIST & DICTIONARY (BÀI 10-13, 19-22) ---
-def nhom_list_dict():
-    # Bài 22: Quản lý tuyển sinh (Tối giản cho đúng vibe thực hành)
-    ds_ts = []
-    while True:
-        print("\n--- QUẢN LÝ & DICTIONARY (19-22) ---")
-        print("19. Filter SV | 20. Mua nhiều nhất | 22. Tuyển sinh | 0. Quay lại")
-        chon = input("Chọn bài: ")
-        if chon == '0': break
-        elif chon == '19':
-            sv = [{"ma": "1", "ten": "An", "tuoi": 20, "tp": "Hà Nội"}, {"ma": "2", "ten": "Ba", "tuoi": 18, "tp": "Huế"}]
-            print("Tuổi >= 20:", [s['ten'] for s in sv if s['tuoi'] >= 20])
-            print("Ở Hà Nội:", [s['ten'] for s in sv if s['tp'] == "Hà Nội"])
-        elif chon == '20':
-            mua = {"A": ["Táo", "Cam"], "B": ["Táo"]}
-            tk = {}
-            for l in mua.values():
-                for i in l: tk[i] = tk.get(i, 0) + 1
-            print("Mua nhiều nhất:", max(tk, key=tk.get))
-        elif chon == '22':
-            m = input("Mã: "); t = input("Tên: "); k = input("Khối: "); d = float(input("Điểm: "))
-            ds_ts.append({"ma": m, "ten": t, "khoi": k, "diem": d, "kq": "Đậu" if d >= 15 else "Trượt"})
-            print("Danh sách:", ds_ts)
-
-# --- CHƯƠNG TRÌNH CHÍNH ---
-def menu_chinh():
-    while True:
-        print("\n" + "=".center(50, "="))
-        print(" BÀI TẬP THỰC HÀNH CHƯƠNG 3 ".center(50, " "))
-        print("=".center(50, "="))
-        print("1. Nhóm String (Bài 1-7)")
-        print("2. Nhóm Date-Time (Bài 8-9)")
-        print("3. Nhóm List (Bài 10-13)")
-        print("4. Nhóm Tuple - Set - Array (Bài 14-18)")
-        print("5. Nhóm Dictionary (Bài 19-22)")
-        print("0. Thoát")
+        chon = input("\nLựa chọn của bạn: ")
         
-        chon = input("Nhập lựa chọn của bạn: ")
-        if chon == '0': break
-        elif chon == '1': nhom_string()
-        elif chon == '2': nhom_datetime()
-        elif chon == '3': # Gom tạm vào chung với List
-            print("Bài 11: Nhập n số, tách chẵn lẻ")
-            n = int(input("n = "))
-            l = [int(input()) for _ in range(n)]
-            print("Chẵn:", [x for x in l if x%2==0], "Lẻ:", [x for x in l if x%2!=0])
-        elif chon == '4': nhom_tuple_set_array()
-        elif chon == '5': nhom_list_dict()
+        if chon == '1' or chon == '4': ql.them_moi()
+        elif chon == '2': ql.tim_kiem()
+        elif chon == '3': ql.sap_xep()
+        elif chon == '5': ql.sua_thong_tin()
+        elif chon == '6': ql.xoa_thong_tin()
+        elif chon == '7': ql.xuat_theo_loc()
+        elif chon == '8': ql.hien_thi_tat_ca()
+        elif chon == '0':
+            print("Cảm ơn bạn đã sử dụng hệ thống. Tạm biệt!")
+            break
+        else:
+            print("Lựa chọn không hợp lệ, vui lòng chọn lại!")
 
 if __name__ == "__main__":
-    menu_chinh()
+    main()
